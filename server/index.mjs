@@ -33,7 +33,11 @@ function saveDataUrl(dataUrl, id, baseUrl) {
 }
 
 const PORT = process.env.PORT || 8787
-const OUT = join(__dirname, 'outputs')
+// Public base for generated asset URLs (set PUBLIC_URL to the deployed backend origin).
+const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`
+// Persist data to a volume in production via DATA_DIR; default to local server dir.
+const DATA_DIR = process.env.DATA_DIR || __dirname
+const OUT = join(DATA_DIR, 'outputs')
 const MIME = { '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg' }
 
 function send(res, code, body, headers = {}) {
@@ -56,8 +60,11 @@ function readBody(req) {
 }
 
 const server = createServer(async (req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`)
+  const url = new URL(req.url, PUBLIC_URL)
   const path = url.pathname
+  // Public base for asset URLs — PUBLIC_URL if set, else derived from the request
+  // (works behind Render/Fly/any proxy without knowing the URL ahead of time).
+  const base = process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || 'localhost:' + PORT}`
   if (req.method === 'OPTIONS') return send(res, 204, '')
 
   try {
@@ -97,7 +104,7 @@ const server = createServer(async (req, res) => {
     if (path === '/generate' && req.method === 'POST') {
       const body = await readBody(req)
       if (!body.agentId) return send(res, 400, { error: 'agentId_required' })
-      const baseUrl = `http://localhost:${PORT}`
+      const baseUrl = base
       try {
         const gen = await runAgent({ orgId: body.orgId || 'demo', agentId: body.agentId, inputs: body.inputs || {}, baseUrl })
         return send(res, 200, gen)
@@ -114,7 +121,7 @@ const server = createServer(async (req, res) => {
       const body = await readBody(req)
       if (!body.name) return send(res, 400, { error: 'name_required' })
       const imageUrl = body.imageDataUrl
-        ? saveDataUrl(body.imageDataUrl, crypto.randomUUID(), `http://localhost:${PORT}`)
+        ? saveDataUrl(body.imageDataUrl, crypto.randomUUID(), base)
         : body.imageUrl || null
       return send(res, 200, createProduct(body.orgId || 'demo', body.name, imageUrl))
     }

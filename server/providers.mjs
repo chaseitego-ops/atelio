@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const OUT = join(__dirname, 'outputs')
+const OUT = join(process.env.DATA_DIR || __dirname, 'outputs')
 mkdirSync(OUT, { recursive: true })
 
 function fillTemplate(tpl, inputs) {

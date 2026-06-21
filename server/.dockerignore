@@ -1,0 +1,6 @@
+.env
+atelio.db
+atelio.db-*
+outputs/
+node_modules/
+*.log

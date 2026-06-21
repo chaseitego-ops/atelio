@@ -4,7 +4,9 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-export const db = new DatabaseSync(join(__dirname, 'atelio.db'))
+// Persist to a volume in production via DATA_DIR; default to local server dir.
+const DATA_DIR = process.env.DATA_DIR || __dirname
+export const db = new DatabaseSync(join(DATA_DIR, 'atelio.db'))
 
 db.exec(`
   PRAGMA journal_mode = WAL;

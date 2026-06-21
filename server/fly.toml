@@ -1,0 +1,23 @@
+# Fly.io config for the Atelio backend.
+# Deploy: fly launch (first time) → fly deploy (updates).
+# Set PUBLIC_URL to the app's public origin after the name is known:
+#   fly secrets set PUBLIC_URL=https://<app-name>.fly.dev
+app = "atelio-api"
+primary_region = "fra"
+
+[build]
+
+[env]
+  PORT = "8080"
+  DATA_DIR = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[mounts]]
+  source = "atelio_data"
+  destination = "/data"

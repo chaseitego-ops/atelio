@@ -1,0 +1,19 @@
+# Render Blueprint — deploys the Atelio backend (server/) as a free Docker web service.
+# Use: render.com → New → Blueprint → connect this repo → Apply.
+services:
+  - type: web
+    name: atelio-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    rootDir: server
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    # Real AI: add these in the Render dashboard (Environment) once you have them.
+    # envVars:
+    #   - key: FAL_KEY
+    #     sync: false
+    #   - key: ANTHROPIC_API_KEY
+    #     sync: false
