@@ -79,6 +79,26 @@ db.exec(`
     at TEXT
   );
 
+  -- Pazaryeri aktarımları (Trendyol/Amazon/Shopify/Woo) — şimdilik mock
+  CREATE TABLE IF NOT EXISTS listings (
+    id TEXT PRIMARY KEY,
+    org_id TEXT NOT NULL,
+    product_id TEXT NOT NULL,
+    marketplace TEXT NOT NULL,
+    status TEXT DEFAULT 'published',
+    external_ref TEXT,
+    created_at TEXT
+  );
+
+  -- Uygulama içi al-sat mesajlaşması (teklif/deal bazlı)
+  CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    deal_id TEXT NOT NULL,
+    sender TEXT NOT NULL,             -- 'seller' | 'buyer'
+    body TEXT,
+    created_at TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS price_lists (
     id TEXT PRIMARY KEY,
     org_id TEXT NOT NULL,
@@ -219,6 +239,33 @@ export function catalogAnalytics(id) {
 function slugify(s) {
   const map = { ç: 'c', ğ: 'g', ı: 'i', İ: 'i', ö: 'o', ş: 's', ü: 'u', â: 'a' }
   return s.toLowerCase().replace(/[çğıİöşüâ]/g, c => map[c] || c).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'katalog'
+}
+
+// ---- marketplace listings (mock export) ----
+export function createListing(orgId, productId, marketplace) {
+  const id = crypto.randomUUID()
+  const ref = marketplace.toLowerCase().replace(/[^a-z]/g, '') + '-' + id.slice(0, 8)
+  // de-dupe: one listing per (product, marketplace)
+  const ex = db.prepare('SELECT id FROM listings WHERE product_id=? AND marketplace=?').get(productId, marketplace)
+  if (ex) return listListings(orgId)
+  db.prepare('INSERT INTO listings (id,org_id,product_id,marketplace,status,external_ref,created_at) VALUES (?,?,?,?,?,?,?)')
+    .run(id, orgId, productId, marketplace, 'published', ref, new Date().toISOString())
+  return listListings(orgId)
+}
+export function listListings(orgId = 'demo') {
+  return db.prepare('SELECT * FROM listings WHERE org_id=? ORDER BY created_at DESC').all(orgId)
+}
+export function deleteListing(id) { db.prepare('DELETE FROM listings WHERE id=?').run(id) }
+
+// ---- deal messages ----
+export function addMessage(dealId, sender, body) {
+  const id = crypto.randomUUID()
+  db.prepare('INSERT INTO messages (id,deal_id,sender,body,created_at) VALUES (?,?,?,?,?)')
+    .run(id, dealId, sender === 'buyer' ? 'buyer' : 'seller', body || '', new Date().toISOString())
+  return listMessages(dealId)
+}
+export function listMessages(dealId) {
+  return db.prepare('SELECT * FROM messages WHERE deal_id=? ORDER BY created_at ASC').all(dealId)
 }
 
 // ---- price lists ----
