@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type Product } from '../lib/api'
+import { api, type Product, type Listing } from '../lib/api'
 import { Loading, BackendDown } from './States'
+
+const MARKETPLACES = ['Trendyol', 'Amazon', 'Shopify', 'WooCommerce']
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([])
+  const [listings, setListings] = useState<Listing[]>([])
+  const [menu, setMenu] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [dataUrl, setDataUrl] = useState<string>('')
   const [preview, setPreview] = useState<string>('')
@@ -15,7 +19,9 @@ export default function Products() {
 
   async function load() {
     try {
-      setProducts(await api.products())
+      const [p, l] = await Promise.all([api.products(), api.listings()])
+      setProducts(p)
+      setListings(l)
       setDown(false)
     } catch {
       setDown(true)
@@ -26,6 +32,12 @@ export default function Products() {
   useEffect(() => {
     load()
   }, [])
+
+  const listingsFor = (id: string) => listings.filter((l) => l.product_id === id)
+  async function exportTo(productId: string, marketplace: string) {
+    setMenu(null)
+    setListings(await api.createListing(productId, marketplace))
+  }
 
   if (down) return <BackendDown onRetry={() => { setLoading(true); load() }} />
 
@@ -111,9 +123,36 @@ export default function Products() {
                   <div className="flex h-full items-center justify-center text-3xl text-ash-dim">◳</div>
                 )}
               </div>
-              <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-                <span className="truncate text-sm text-bone">{p.name}</span>
-                <button onClick={() => remove(p.id)} className="shrink-0 text-ash-dim opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100" aria-label="Sil">✕</button>
+              <div className="px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm text-bone">{p.name}</span>
+                  <button onClick={() => remove(p.id)} className="shrink-0 text-ash-dim opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100" aria-label="Sil">✕</button>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1">
+                  {listingsFor(p.id).map((l) => (
+                    <span key={l.id} className="rounded-md bg-cobalt-500/15 px-1.5 py-0.5 text-[10px] font-medium text-cobalt-200" title={l.external_ref || ''}>
+                      {l.marketplace} ✓
+                    </span>
+                  ))}
+                  <div className="relative">
+                    <button onClick={() => setMenu(menu === p.id ? null : p.id)} className="rounded-md border border-line px-1.5 py-0.5 text-[10px] text-ash hover:text-bone">
+                      ＋ Aktar
+                    </button>
+                    {menu === p.id && (
+                      <div className="absolute bottom-full left-0 z-20 mb-1 w-36 overflow-hidden rounded-lg border border-line bg-ink-800 shadow-lift">
+                        {MARKETPLACES.map((m) => {
+                          const done = listingsFor(p.id).some((l) => l.marketplace === m)
+                          return (
+                            <button key={m} disabled={done} onClick={() => exportTo(p.id, m)}
+                              className="block w-full px-3 py-1.5 text-left text-xs text-ash hover:bg-white/5 hover:text-bone disabled:opacity-40">
+                              {m} {done ? '✓' : '↗'}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           ))}

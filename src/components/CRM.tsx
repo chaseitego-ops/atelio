@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Deal, type DealStage } from '../lib/api'
+import { api, type Deal, type DealStage, type Message } from '../lib/api'
 import { Loading, BackendDown } from './States'
 
 const COLS: { id: DealStage; label: string; accent: string }[] = [
@@ -114,10 +114,22 @@ function DealCard({ d, onMove, onAmount }: { d: Deal; onMove: (d: Deal, s: DealS
   const [follow, setFollow] = useState(false)
   const [msg, setMsg] = useState('')
   const [copied, setCopied] = useState(false)
+  const [chat, setChat] = useState(false)
+  const [msgs, setMsgs] = useState<Message[]>([])
+  const [text, setText] = useState('')
 
   function toggleFollow() {
     if (!follow) setMsg(buildMsg(d))
     setFollow((v) => !v)
+  }
+  async function toggleChat() {
+    if (!chat) setMsgs(await api.dealMessages(d.id))
+    setChat((v) => !v)
+  }
+  async function sendChat() {
+    if (!text.trim()) return
+    setMsgs(await api.sendMessage(d.id, 'seller', text.trim()))
+    setText('')
   }
   const isEmail = (d.contact || '').includes('@')
   const phone = (d.contact || '').replace(/\D/g, '')
@@ -165,10 +177,33 @@ function DealCard({ d, onMove, onAmount }: { d: Deal; onMove: (d: Deal, s: DealS
         )}
       </div>
 
-      {d.contact && (
-        <button onClick={toggleFollow} className="mt-2 w-full rounded-lg border border-line py-1.5 text-2xs text-cobalt-200 transition-colors hover:bg-white/5">
-          {follow ? 'Kapat' : '✉ Müşteriye yaz'}
+      <div className="mt-2 flex gap-1.5">
+        <button onClick={toggleChat} className="flex-1 rounded-lg border border-line py-1.5 text-2xs text-cobalt-200 transition-colors hover:bg-white/5">
+          {chat ? 'Kapat' : '💬 Sohbet'}
         </button>
+        {d.contact && (
+          <button onClick={toggleFollow} className="flex-1 rounded-lg border border-line py-1.5 text-2xs text-cobalt-200 transition-colors hover:bg-white/5">
+            {follow ? 'Kapat' : '✉ Yaz'}
+          </button>
+        )}
+      </div>
+
+      {chat && (
+        <div className="mt-2 rounded-xl border border-line bg-ink-900/60 p-2.5">
+          <div className="max-h-40 space-y-1.5 overflow-y-auto">
+            {msgs.length === 0 && <p className="text-2xs text-ash-dim">Henüz mesaj yok. Müşteriyle sohbeti başlat.</p>}
+            {msgs.map((m) => (
+              <div key={m.id} className={`max-w-[85%] rounded-lg px-2 py-1 text-2xs ${m.sender === 'seller' ? 'ml-auto bg-cobalt-500/20 text-bone' : 'bg-ink-700 text-ash'}`}>
+                {m.body}
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex gap-1.5">
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendChat()} placeholder="Mesaj yaz…"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-ink-700/60 px-2 py-1 text-2xs text-bone placeholder:text-ash-dim focus:border-cobalt-400/60 focus:outline-none" />
+            <button onClick={sendChat} className="rounded-lg bg-cobalt-grad px-2.5 py-1 text-2xs font-semibold text-white">Gönder</button>
+          </div>
+        </div>
       )}
       {follow && (
         <div className="mt-2 rounded-xl border border-line bg-ink-900/60 p-2.5">

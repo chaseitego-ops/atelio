@@ -93,6 +93,15 @@ export const api = {
   deletePriceItem: (id: string) => req<PriceList>(`/price-items/${id}`, { method: 'DELETE' }),
   deletePriceList: (id: string) => req<{ ok: boolean }>(`/price-lists/${id}`, { method: 'DELETE' }),
 
+  listings: () => req<Listing[]>('/listings'),
+  createListing: (productId: string, marketplace: string) =>
+    req<Listing[]>('/listings', { method: 'POST', body: JSON.stringify({ productId, marketplace }) }),
+  deleteListing: (id: string) => req<{ ok: boolean }>(`/listings/${id}`, { method: 'DELETE' }),
+
+  dealMessages: (dealId: string) => req<Message[]>(`/deals/${dealId}/messages`),
+  sendMessage: (dealId: string, sender: 'seller' | 'buyer', body: string) =>
+    req<Message[]>(`/deals/${dealId}/messages`, { method: 'POST', body: JSON.stringify({ sender, body }) }),
+
   deals: () => req<Deal[]>('/deals'),
   createDeal: (data: { catalogSlug?: string; name: string; contact: string; message: string }) =>
     req<Deal>('/deals', { method: 'POST', body: JSON.stringify(data) }),
@@ -116,6 +125,22 @@ export interface PriceList {
   count?: number
   items?: PriceItem[]
   created_at?: string
+}
+
+export interface Listing {
+  id: string
+  product_id: string
+  marketplace: string
+  status: string
+  external_ref: string | null
+  created_at: string
+}
+export interface Message {
+  id: string
+  deal_id: string
+  sender: 'seller' | 'buyer'
+  body: string
+  created_at: string
 }
 
 export type DealStage = 'lead' | 'quoted' | 'negotiating' | 'won' | 'lost'

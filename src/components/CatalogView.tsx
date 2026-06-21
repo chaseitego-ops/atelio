@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Catalog } from '../lib/api'
+import { api, type Catalog, type Message } from '../lib/api'
 import Logo from './Logo'
 
 // Public storefront — what a customer sees when they open a shared catalog link.
@@ -9,16 +9,29 @@ export default function CatalogView({ slug }: { slug: string }) {
   const [form, setForm] = useState({ name: '', contact: '', message: '' })
   const [sent, setSent] = useState(false)
   const [sending, setSending] = useState(false)
+  const [dealId, setDealId] = useState<string>('')
+  const [msgs, setMsgs] = useState<Message[]>([])
+  const [text, setText] = useState('')
 
   async function requestQuote() {
     if (!form.name.trim() || !form.contact.trim()) return
     setSending(true)
     try {
-      await api.createDeal({ catalogSlug: slug, ...form })
+      const deal = await api.createDeal({ catalogSlug: slug, ...form })
+      setDealId(deal.id)
+      if (form.message.trim()) setMsgs(await api.sendMessage(deal.id, 'buyer', form.message.trim()))
       setSent(true)
     } finally {
       setSending(false)
     }
+  }
+  async function refreshMsgs() {
+    if (dealId) setMsgs(await api.dealMessages(dealId))
+  }
+  async function sendBuyer() {
+    if (!text.trim() || !dealId) return
+    setMsgs(await api.sendMessage(dealId, 'buyer', text.trim()))
+    setText('')
   }
 
   useEffect(() => {
@@ -83,10 +96,31 @@ export default function CatalogView({ slug }: { slug: string }) {
 
         <div className="mt-16 rounded-3xl border border-line bg-ink-800/50 p-8">
           {sent ? (
-            <div className="text-center">
-              <p className="text-3xl">✓</p>
-              <h2 className="mt-3 font-display text-2xl font-semibold text-bone">Talebin alındı</h2>
-              <p className="mt-2 text-ash">En kısa sürede fiyat teklifiyle döneceğiz.</p>
+            <div className="mx-auto max-w-md">
+              <div className="text-center">
+                <p className="text-3xl">✓</p>
+                <h2 className="mt-3 font-display text-2xl font-semibold text-bone">Talebin alındı</h2>
+                <p className="mt-2 text-ash">Satıcıyla buradan mesajlaşabilirsin.</p>
+              </div>
+              <div className="mt-6 rounded-2xl border border-line bg-ink-900/50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-2xs font-medium text-ash">Sohbet</span>
+                  <button onClick={refreshMsgs} className="text-2xs text-cobalt-300 hover:text-cobalt-200">Yenile ↻</button>
+                </div>
+                <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                  {msgs.length === 0 && <p className="text-2xs text-ash-dim">Henüz mesaj yok.</p>}
+                  {msgs.map((m) => (
+                    <div key={m.id} className={`max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs ${m.sender === 'buyer' ? 'ml-auto bg-cobalt-500/20 text-bone' : 'bg-ink-700 text-ash'}`}>
+                      {m.body}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendBuyer()} placeholder="Mesaj yaz…"
+                    className="min-w-0 flex-1 rounded-lg border border-line bg-ink-700/60 px-3 py-1.5 text-xs text-bone placeholder:text-ash-dim focus:border-cobalt-400/60 focus:outline-none" />
+                  <button onClick={sendBuyer} className="rounded-lg bg-cobalt-grad px-3 py-1.5 text-xs font-semibold text-white">Gönder</button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="mx-auto max-w-md">

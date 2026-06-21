@@ -18,7 +18,8 @@ const dbm = await import('./db.mjs')
 const { listAgents, getOrg, db, createProduct, listProducts, deleteProduct,
   createCatalog, listCatalogs, getCatalogBySlug, recordCatalogView, catalogAnalytics,
   createDeal, listDeals, updateDeal,
-  createPriceList, listPriceLists, getPriceList, addPriceItem, deletePriceItem, deletePriceList } = dbm
+  createPriceList, listPriceLists, getPriceList, addPriceItem, deletePriceItem, deletePriceList,
+  createListing, listListings, deleteListing, addMessage, listMessages } = dbm
 const { runAgent, getGeneration, listGenerations } = await import('./runner.mjs')
 const { writeFileSync, mkdirSync } = await import('node:fs')
 
@@ -170,6 +171,25 @@ const server = createServer(async (req, res) => {
     }
     const piOne = path.match(/^\/price-items\/([^/]+)$/)
     if (piOne && req.method === 'DELETE') return send(res, 200, deletePriceItem(piOne[1]) || { ok: true })
+
+    // ---- marketplace listings ----
+    if (path === '/listings' && req.method === 'GET') return send(res, 200, listListings())
+    if (path === '/listings' && req.method === 'POST') {
+      const body = await readBody(req)
+      if (!body.productId || !body.marketplace) return send(res, 400, { error: 'productId_and_marketplace_required' })
+      return send(res, 200, createListing(body.orgId || 'demo', body.productId, body.marketplace))
+    }
+    if (path.startsWith('/listings/') && req.method === 'DELETE') {
+      deleteListing(path.split('/')[2]); return send(res, 200, { ok: true })
+    }
+
+    // ---- deal messages ----
+    const msgM = path.match(/^\/deals\/([^/]+)\/messages$/)
+    if (msgM && req.method === 'GET') return send(res, 200, listMessages(msgM[1]))
+    if (msgM && req.method === 'POST') {
+      const body = await readBody(req)
+      return send(res, 200, addMessage(msgM[1], body.sender, body.body))
+    }
 
     // ---- CRM deals ----
     if (path === '/deals' && req.method === 'GET') return send(res, 200, listDeals(url.searchParams.get('orgId') || 'demo'))
