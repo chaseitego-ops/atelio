@@ -1,0 +1,29 @@
+# dependencies & build
+node_modules
+dist
+*.tsbuildinfo
+.vite
+
+# secrets & local runtime data  (NEVER commit)
+.env
+.env.*
+server/.env
+server/atelio.db
+server/atelio.db-*
+server/outputs/
+
+# SSH key for the local tunnel — private, never push
+.tunnel/
+
+# build artifacts / temp
+Atelio.html
+Atelio-Roadmap.html
+atelio-site.zip
+public/_*
+
+# local tooling / os
+.claude/
+.DS_Store
+.lumi-link-temp
+lumi
+*.log
